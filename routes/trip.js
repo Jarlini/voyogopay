@@ -44,10 +44,9 @@ router.post('/add', upload.single('image'), async (req, res) => {
 });
 
 // Route to handle updating a trip
-router.put('/update/:id', upload.single('image'), async (req, res) => {
+router.put('/update/:id', upload.array('photos', 5), async (req, res) => {
   const { id } = req.params;
   const { title, location, days, schedule } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
     const updatedTrip = await Trip.findById(id);
@@ -60,8 +59,10 @@ router.put('/update/:id', upload.single('image'), async (req, res) => {
     updatedTrip.location = location || updatedTrip.location;
     updatedTrip.days = days || updatedTrip.days;
     updatedTrip.schedule = schedule || updatedTrip.schedule;
-    if (image) {
-      updatedTrip.photos = [image]; // Replace existing photos with the new image
+
+    // If new photos are uploaded
+    if (req.files.length > 0) {
+      updatedTrip.photos = req.files.map(file => `/uploads/${file.filename}`);
     }
 
     const savedTrip = await updatedTrip.save();

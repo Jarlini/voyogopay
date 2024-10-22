@@ -15,3 +15,4 @@ router.put('/:id', packageController.updatePackage); // Adjusted to match your A
 router.delete('/:id', packageController.deletePackage); // Adjusted to match your API structure
 
 module.exports = router;
+
