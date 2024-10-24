@@ -1,92 +1,100 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const Trip = require('../models/Trip'); // Your Trip model
+const Trip = require('../models/Trip'); // Adjust the path to your Trip model
 const router = express.Router();
 
-// Configure Multer for image uploads
+// Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Directory where images are stored
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Adjust the path where you want to save uploaded files
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Generate unique filename
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname); // Append timestamp to avoid name collisions
   }
 });
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
-
-// Route to handle adding a new trip with image upload
-router.post('/add', upload.single('image'), async (req, res) => {
-  const { title, location, days, schedule } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
-
-  // Simple validation checks
-  if (!title || !location || !days || !schedule) {
-    return res.status(400).json({ message: 'Please fill out all required fields.' });
-  }
-
+// Create new trip
+router.post('/trips', upload.array('photos'), async (req, res) => {
   try {
-    const newTrip = new Trip({
+    const { title, location, days, schedule } = req.body;
+
+    const trip = new Trip({
       title,
       location,
       days,
       schedule,
-      photos: image ? [image] : [] // Add image to the photos array
+      photos: req.files.map(file => file.path) // Save uploaded file paths to the database
     });
 
-    const savedTrip = await newTrip.save();
-    res.status(201).json({ message: 'Trip added successfully!', trip: savedTrip });
+    const savedTrip = await trip.save();
+    res.status(201).json({ newTrip: savedTrip });
   } catch (error) {
-    console.error('Error in adding trip:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Error creating trip:', error);
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// Route to handle updating a trip
-router.put('/update/:id', upload.array('photos', 5), async (req, res) => {
+// Update trip
+router.put('/trips/:id', upload.array('photos'), async (req, res) => {
   const { id } = req.params;
   const { title, location, days, schedule } = req.body;
 
   try {
-    const updatedTrip = await Trip.findById(id);
-    if (!updatedTrip) {
+    const trip = await Trip.findById(id);
+
+    if (!trip) {
       return res.status(404).json({ message: 'Trip not found' });
     }
 
     // Update fields
-    updatedTrip.title = title || updatedTrip.title;
-    updatedTrip.location = location || updatedTrip.location;
-    updatedTrip.days = days || updatedTrip.days;
-    updatedTrip.schedule = schedule || updatedTrip.schedule;
+    trip.title = title || trip.title;
+    trip.location = location || trip.location;
+    trip.days = days || trip.days;
+    trip.schedule = schedule || trip.schedule;
 
-    // If new photos are uploaded
-    if (req.files.length > 0) {
-      updatedTrip.photos = req.files.map(file => `/uploads/${file.filename}`);
+    // Handle new photos (optional)
+    if (req.files && req.files.length > 0) {
+      trip.photos = [...trip.photos, ...req.files.map(file => file.path)]; // Append new photos
     }
 
-    const savedTrip = await updatedTrip.save();
-    res.json({ message: 'Trip updated successfully!', trip: savedTrip });
+    const updatedTrip = await trip.save();
+    res.status(200).json({ updatedTrip });
   } catch (error) {
-    console.error('Error in updating trip:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Error updating trip:', error);
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 
-// Route to handle deleting a trip
-router.delete('/delete/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const deletedTrip = await Trip.findByIdAndDelete(id);
-    if (!deletedTrip) {
-      return res.status(404).json({ message: 'Trip not found' });
+router.get('/trips', async (req, res) => {
+    try {
+      const trips = await Trip.find();
+      res.status(200).json(trips);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+      res.status(500).json({ message: 'Server error', error });
     }
-    res.json({ message: 'Trip deleted successfully!' });
-  } catch (error) {
-    console.error('Error in deleting trip:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
-  }
-});
+  });
+  
+
+//   // Update trip
+//   router.put('/trips/:id', upload.array('photos'), async (req, res) => {
+//     // Your existing code
+//   });
+  
+  // Delete trip
+  router.delete('/trips/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const trip = await Trip.findByIdAndDelete(id);
+      if (!trip) {
+        return res.status(404).json({ message: 'Trip not found' });
+      }
+      res.status(200).json({ message: 'Trip deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
 
 module.exports = router;

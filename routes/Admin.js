@@ -30,44 +30,8 @@ router.get('/users', verifyToken, async (req, res) => {
   }
 });
 
-// Edit a trip
-router.put('/trips/:id', async (req, res) => {
-  const { id } = req.params;
-  const { name, location, duration, price, description, images } = req.body;
-  
-  try {
-    const updatedTrip = await Trip.findByIdAndUpdate(
-      id,
-      { name, location, duration, price, description, images },
-      { new: true }
-    );
 
-    if (!updatedTrip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
 
-    res.json({ message: 'Trip updated successfully', updatedTrip });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
-  }
-});
-
-// Delete a trip
-router.delete('/trips/:id', async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    const deletedTrip = await Trip.findByIdAndDelete(id);
-    
-    if (!deletedTrip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
-
-    res.json({ message: 'Trip deleted successfully', deletedTrip });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
-  }
-});
 // Public routes
 router.post('/login', login);       // Login route
 router.post('/register', register); // Registration route
@@ -123,15 +87,5 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
-  // Fetch all trips for Home page
-  router.get('/trips', async (req, res) => {
-    try {
-      const trips = await Trip.find();
-      res.json(trips);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-  router.delete('/users/:id', auth, adminAuth, deleteUser);  // Delete user (admin only)
 
 module.exports = router;
